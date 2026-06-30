@@ -1,8 +1,11 @@
+<!DOCTYPE html>
 <html>
 <head>
-  <title>Simple Finance App</title>
+  <title>Finance App (Clean Fixed)</title>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
     body { font-family: Arial; max-width: 800px; margin: auto; padding: 20px; }
     input, select, button { padding: 8px; margin: 5px; }
@@ -11,18 +14,20 @@
     th { background: #f4f4f4; }
   </style>
 </head>
+
 <body>
 
 <h2>📒 Finance App</h2>
 
 <input id="desc" placeholder="Description">
 <input id="amount" type="number" placeholder="Amount">
+
 <select id="type">
   <option value="income">Income</option>
   <option value="expense">Expense</option>
 </select>
-<button onclick="add()">Add</button>
 
+<button onclick="add()">Add</button>
 <button onclick="pdf()">Download PDF</button>
 
 <canvas id="chart"></canvas>
@@ -33,6 +38,7 @@
       <th>Description</th>
       <th>Type</th>
       <th>Amount</th>
+      <th>Action</th>
     </tr>
   </thead>
   <tbody id="list"></tbody>
@@ -40,53 +46,114 @@
 
 <script>
 let data = JSON.parse(localStorage.getItem("data")) || [];
+let editIndex = null;
+let myChart = null;
+
+function saveData(){
+  localStorage.setItem("data", JSON.stringify(data));
+}
 
 function add(){
-  data.push({
-    desc: desc.value,
-    amount: +amount.value,
-    type: type.value,
+  let newItem = {
+    desc: document.getElementById("desc").value,
+    amount: parseFloat(document.getElementById("amount").value),
+    type: document.getElementById("type").value,
     date: new Date().toISOString()
-  });
+  };
 
-  localStorage.setItem("data", JSON.stringify(data));
+  if(!newItem.desc || !newItem.amount) return;
+
+  if(editIndex === null){
+    data.push(newItem);
+  } else {
+    data[editIndex] = newItem;
+    editIndex = null;
+  }
+
+  saveData();
+  clearForm();
+  render();
+}
+
+function clearForm(){
+  document.getElementById("desc").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("type").value = "income";
+}
+
+function editItem(index){
+  let item = data[index];
+
+  document.getElementById("desc").value = item.desc;
+  document.getElementById("amount").value = item.amount;
+  document.getElementById("type").value = item.type;
+
+  editIndex = index;
+}
+
+function deleteItem(index){
+  data.splice(index, 1);
+  saveData();
   render();
 }
 
 function render(){
+  let list = document.getElementById("list");
   list.innerHTML = "";
 
-  data.forEach(d=>{
-    list.innerHTML += `<tr>
-      <td>${d.desc}</td>
-      <td>${d.type}</td>
-      <td>${d.amount}</td>
-    </tr>`;
+  data.forEach((d, index) => {
+    list.innerHTML += `
+      <tr>
+        <td>${d.desc}</td>
+        <td>${d.type}</td>
+        <td>${d.amount}</td>
+        <td>
+          <button onclick="editItem(${index})">✏️</button>
+          <button onclick="deleteItem(${index})">❌</button>
+        </td>
+      </tr>
+    `;
   });
 
-  chartRender();
+  renderChart();
 }
 
-function chartRender(){
+function renderChart(){
   let months = {};
 
-  data.forEach(d=>{
+  data.forEach(d => {
     let m = d.date.slice(0,7);
-    if(!months[m]) months[m] = {i:0,e:0};
 
-    if(d.type=="income") months[m].i += d.amount;
-    else months[m].e += d.amount;
+    if(!months[m]){
+      months[m] = {income:0, expense:0};
+    }
+
+    if(d.type === "income"){
+      months[m].income += d.amount;
+    } else {
+      months[m].expense += d.amount;
+    }
   });
 
   let keys = Object.keys(months);
 
-  new Chart(chart, {
+  if(myChart) myChart.destroy();
+
+  myChart = new Chart(document.getElementById("chart"), {
     type: "line",
     data: {
       labels: keys,
       datasets: [
-        { label:"Income", data: keys.map(k=>months[k].i), borderColor:"green" },
-        { label:"Expense", data: keys.map(k=>months[k].e), borderColor:"red" }
+        {
+          label: "Income",
+          data: keys.map(k => months[k].income),
+          borderColor: "green"
+        },
+        {
+          label: "Expense",
+          data: keys.map(k => months[k].expense),
+          borderColor: "red"
+        }
       ]
     }
   });
@@ -97,11 +164,11 @@ function pdf(){
   let doc = new jsPDF();
 
   let y = 10;
-  doc.text("Finance Report",10,y);
+  doc.text("Finance Report", 10, y);
 
-  data.forEach(d=>{
+  data.forEach(d => {
     y += 10;
-    doc.text(`${d.desc} | ${d.type} | ${d.amount}`,10,y);
+    doc.text(`${d.desc} | ${d.type} | ${d.amount}`, 10, y);
   });
 
   doc.save("report.pdf");
@@ -110,6 +177,5 @@ function pdf(){
 render();
 </script>
 
-</script>
 </body>
 </html>
