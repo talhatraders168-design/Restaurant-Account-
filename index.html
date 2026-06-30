@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Advanced Account Book</title>
+  <title>Account Book Pro</title>
   <style>
-    body { font-family: Arial; max-width: 700px; margin: auto; padding: 20px; }
+    body { font-family: Arial; max-width: 750px; margin: auto; padding: 20px; }
     input, select, button { padding: 8px; margin: 5px; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
     th { background: #f4f4f4; }
     .income { color: green; font-weight: bold; }
     .expense { color: red; font-weight: bold; }
-    .summary { margin-top: 15px; padding: 10px; background: #fafafa; }
+    .box { background: #fafafa; padding: 10px; margin-top: 10px; }
     button { cursor: pointer; }
   </style>
 </head>
 <body>
 
-<h2>📒 Advanced Account Book</h2>
+<h2>📒 Account Book Pro</h2>
 
 <input id="desc" placeholder="Description">
 <input id="amount" type="number" placeholder="Amount">
@@ -26,12 +26,21 @@
   <option value="expense">Expense</option>
 </select>
 
-<button onclick="addEntry()">Add</button>
+<button onclick="saveEntry()">Save</button>
+<button onclick="clearForm()">Clear</button>
 
-<div class="summary">
+<div class="box">
+  <h3>📊 Summary (All Time)</h3>
   <p>💰 Income: <span id="income">0</span></p>
   <p>💸 Expense: <span id="expense">0</span></p>
   <h3>⚖️ Balance: <span id="balance">0</span></h3>
+</div>
+
+<div class="box">
+  <h3>📅 This Month Report</h3>
+  <p>💰 Income: <span id="mIncome">0</span></p>
+  <p>💸 Expense: <span id="mExpense">0</span></p>
+  <h3>⚖️ Balance: <span id="mBalance">0</span></h3>
 </div>
 
 <table>
@@ -48,50 +57,86 @@
 
 <script>
 let data = JSON.parse(localStorage.getItem("accounts")) || [];
+let editId = null;
 
-function saveData() {
+function saveToStorage() {
   localStorage.setItem("accounts", JSON.stringify(data));
 }
 
-function addEntry() {
+function clearForm() {
+  document.getElementById("desc").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("type").value = "income";
+  editId = null;
+}
+
+function saveEntry() {
   let desc = document.getElementById("desc").value;
   let amount = parseFloat(document.getElementById("amount").value);
   let type = document.getElementById("type").value;
 
   if (!desc || !amount) return;
 
-  data.push({ id: Date.now(), desc, amount, type });
+  if (editId) {
+    let item = data.find(d => d.id === editId);
+    item.desc = desc;
+    item.amount = amount;
+    item.type = type;
+    editId = null;
+  } else {
+    data.push({ id: Date.now(), desc, amount, type, date: new Date() });
+  }
 
-  saveData();
+  saveToStorage();
+  clearForm();
   render();
+}
 
-  document.getElementById("desc").value = "";
-  document.getElementById("amount").value = "";
+function editEntry(id) {
+  let item = data.find(d => d.id === id);
+  document.getElementById("desc").value = item.desc;
+  document.getElementById("amount").value = item.amount;
+  document.getElementById("type").value = item.type;
+  editId = id;
 }
 
 function deleteEntry(id) {
-  data = data.filter(item => item.id !== id);
-  saveData();
+  data = data.filter(d => d.id !== id);
+  saveToStorage();
   render();
+}
+
+function isThisMonth(date) {
+  let d = new Date(date);
+  let now = new Date();
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
 function render() {
   let list = document.getElementById("list");
   list.innerHTML = "";
 
-  let income = 0;
-  let expense = 0;
+  let income = 0, expense = 0;
+  let mIncome = 0, mExpense = 0;
 
   data.forEach(item => {
     if (item.type === "income") income += item.amount;
     else expense += item.amount;
+
+    if (isThisMonth(item.date)) {
+      if (item.type === "income") mIncome += item.amount;
+      else mExpense += item.amount;
+    }
 
     list.innerHTML += `
       <tr>
         <td>${item.desc}</td>
         <td class="${item.type}">${item.type}</td>
         <td>${item.amount}</td>
-        <td><button onclick="deleteEntry(${item.id})">❌</button></td>
+        <td>
+          <button onclick="editEntry(${item.id})">✏️</button>
+          <button onclick="deleteEntry(${item.id})">❌</button>
+        </td>
       </tr>
     `;
   });
@@ -99,6 +144,10 @@ function render() {
   document.getElementById("income").innerText = income;
   document.getElementById("expense").innerText = expense;
   document.getElementById("balance").innerText = income - expense;
+
+  document.getElementById("mIncome").innerText = mIncome;
+  document.getElementById("mExpense").innerText = mExpense;
+  document.getElementById("mBalance").innerText = mIncome - mExpense;
 }
 
 render();
