@@ -1,134 +1,25 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-<meta charset="UTF-8">
-<title>Chicken House - Login</title>
-
-<style>
-body{
-    font-family:Arial;
-    background:#f1f1f1;
-    margin:0;
-}
-
-.login-box{
-    width:300px;
-    margin:100px auto;
-    background:white;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 0 10px gray;
-}
-
-input{
-    width:100%;
-    padding:10px;
-    margin-top:10px;
-}
-
-button{
-    width:100%;
-    padding:10px;
-    margin-top:10px;
-    background:#198754;
-    color:white;
-    border:none;
-    cursor:pointer;
-}
-
-#dashboard{
-    display:none;
-    padding:20px;
-}
-
-.card{
-    background:white;
-    padding:15px;
-    margin-top:10px;
-    border-radius:10px;
-    box-shadow:0 0 5px gray;
-}
-</style>
-
-</head>
-<body>
-
-<!-- LOGIN -->
-<div class="login-box" id="loginBox">
-    <h2>Chicken House Login</h2>
-    <input type="text" id="user" placeholder="Username">
-    <input type="password" id="pass" placeholder="Password">
-    <button onclick="login()">Login</button>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard">
-    <h2>Chicken House Dashboard</h2>
-
-    <div class="card">
-        <h3>আজকের সেলস</h3>
-        <p id="sales">0 ৳</p>
-    </div>
-
-    <div class="card">
-        <h3>আজকের খরচ</h3>
-        <p>0 ৳</p>
-    </div>
-
-    <div class="card">
-        <h3>লাভ</h3>
-        <p>0 ৳</p>
-    </div>
-
-    <button onclick="logout()">Logout</button>
-</div>
-
-<script>
-
-function login(){
-    let user = document.getElementById("user").value;
-    let pass = document.getElementById("pass").value;
-
-    // Simple demo login
-    if(user=="admin" && pass=="1234"){
-        localStorage.setItem("login","true");
-
-        document.getElementById("loginBox").style.display="none";
-        document.getElementById("dashboard").style.display="block";
-
-        loadData();
-    }else{
-        alert("ভুল ইউজার বা পাসওয়ার্ড");
-    }
-}
-
-function logout(){
-    localStorage.removeItem("login");
-    location.reload();
-}
-
-function loadData(){
-
-let sales = JSON.parse(localStorage.getItem("sales")) || [];
-
-let total = 0;
-
-sales.forEach(s=>{
-    total += Number(s.total);
-});
-
-document.getElementById("sales").innerText = total + " ৳";
-
-}
-
-// auto login
-if(localStorage.getItem("login")=="true"){
-    document.getElementById("loginBox").style.display="none";
-    document.getElementById("dashboard").style.display="block";
-    loadData();
-}
-
-</script>
-
-</body>
-</html>
+ChickenHouse/
+│
+├── index.html          (Login Page)
+├── dashboard.html      (Main Dashboard)
+├── pos.html            (Billing / POS System)
+├── kitchen.html        (Kitchen Display System)
+├── orders.html         (All Orders)
+├── stock.html          (Inventory Management)
+├── expense.html        (Expense Entry)
+├── reports.html        (Reports Page)
+├── users.html          (User Management)
+├── branches.html       (Multi Branch Control)
+│
+├── css/
+│   └── style.css       (All design)
+│
+├── js/
+│   ├── auth.js         (Login system)
+│   ├── pos.js          (POS logic)
+│   ├── dashboard.js    (Dashboard data)
+│   ├── stock.js        (Stock system)
+│   └── reports.js      (Reports system)
+│
+└── data/
+    └── local.json      (Optional offline data storage)
