@@ -1,47 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Account Book Pro</title>
+  <title>Simple Finance App</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { font-family: Arial; max-width: 750px; margin: auto; padding: 20px; }
+    body { font-family: Arial; max-width: 800px; margin: auto; padding: 20px; }
     input, select, button { padding: 8px; margin: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
     th { background: #f4f4f4; }
-    .income { color: green; font-weight: bold; }
-    .expense { color: red; font-weight: bold; }
-    .box { background: #fafafa; padding: 10px; margin-top: 10px; }
-    button { cursor: pointer; }
   </style>
 </head>
 <body>
 
-<h2>📒 Account Book Pro</h2>
+<h2>📒 Finance App</h2>
 
 <input id="desc" placeholder="Description">
 <input id="amount" type="number" placeholder="Amount">
-
 <select id="type">
   <option value="income">Income</option>
   <option value="expense">Expense</option>
 </select>
+<button onclick="add()">Add</button>
 
-<button onclick="saveEntry()">Save</button>
-<button onclick="clearForm()">Clear</button>
+<button onclick="pdf()">Download PDF</button>
 
-<div class="box">
-  <h3>📊 Summary (All Time)</h3>
-  <p>💰 Income: <span id="income">0</span></p>
-  <p>💸 Expense: <span id="expense">0</span></p>
-  <h3>⚖️ Balance: <span id="balance">0</span></h3>
-</div>
-
-<div class="box">
-  <h3>📅 This Month Report</h3>
-  <p>💰 Income: <span id="mIncome">0</span></p>
-  <p>💸 Expense: <span id="mExpense">0</span></p>
-  <h3>⚖️ Balance: <span id="mBalance">0</span></h3>
-</div>
+<canvas id="chart"></canvas>
 
 <table>
   <thead>
@@ -49,105 +34,78 @@
       <th>Description</th>
       <th>Type</th>
       <th>Amount</th>
-      <th>Action</th>
     </tr>
   </thead>
   <tbody id="list"></tbody>
 </table>
 
 <script>
-let data = JSON.parse(localStorage.getItem("accounts")) || [];
-let editId = null;
+let data = JSON.parse(localStorage.getItem("data")) || [];
 
-function saveToStorage() {
-  localStorage.setItem("accounts", JSON.stringify(data));
-}
-
-function clearForm() {
-  document.getElementById("desc").value = "";
-  document.getElementById("amount").value = "";
-  document.getElementById("type").value = "income";
-  editId = null;
-}
-
-function saveEntry() {
-  let desc = document.getElementById("desc").value;
-  let amount = parseFloat(document.getElementById("amount").value);
-  let type = document.getElementById("type").value;
-
-  if (!desc || !amount) return;
-
-  if (editId) {
-    let item = data.find(d => d.id === editId);
-    item.desc = desc;
-    item.amount = amount;
-    item.type = type;
-    editId = null;
-  } else {
-    data.push({ id: Date.now(), desc, amount, type, date: new Date() });
-  }
-
-  saveToStorage();
-  clearForm();
-  render();
-}
-
-function editEntry(id) {
-  let item = data.find(d => d.id === id);
-  document.getElementById("desc").value = item.desc;
-  document.getElementById("amount").value = item.amount;
-  document.getElementById("type").value = item.type;
-  editId = id;
-}
-
-function deleteEntry(id) {
-  data = data.filter(d => d.id !== id);
-  saveToStorage();
-  render();
-}
-
-function isThisMonth(date) {
-  let d = new Date(date);
-  let now = new Date();
-  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-}
-
-function render() {
-  let list = document.getElementById("list");
-  list.innerHTML = "";
-
-  let income = 0, expense = 0;
-  let mIncome = 0, mExpense = 0;
-
-  data.forEach(item => {
-    if (item.type === "income") income += item.amount;
-    else expense += item.amount;
-
-    if (isThisMonth(item.date)) {
-      if (item.type === "income") mIncome += item.amount;
-      else mExpense += item.amount;
-    }
-
-    list.innerHTML += `
-      <tr>
-        <td>${item.desc}</td>
-        <td class="${item.type}">${item.type}</td>
-        <td>${item.amount}</td>
-        <td>
-          <button onclick="editEntry(${item.id})">✏️</button>
-          <button onclick="deleteEntry(${item.id})">❌</button>
-        </td>
-      </tr>
-    `;
+function add(){
+  data.push({
+    desc: desc.value,
+    amount: +amount.value,
+    type: type.value,
+    date: new Date().toISOString()
   });
 
-  document.getElementById("income").innerText = income;
-  document.getElementById("expense").innerText = expense;
-  document.getElementById("balance").innerText = income - expense;
+  localStorage.setItem("data", JSON.stringify(data));
+  render();
+}
 
-  document.getElementById("mIncome").innerText = mIncome;
-  document.getElementById("mExpense").innerText = mExpense;
-  document.getElementById("mBalance").innerText = mIncome - mExpense;
+function render(){
+  list.innerHTML = "";
+
+  data.forEach(d=>{
+    list.innerHTML += `<tr>
+      <td>${d.desc}</td>
+      <td>${d.type}</td>
+      <td>${d.amount}</td>
+    </tr>`;
+  });
+
+  chartRender();
+}
+
+function chartRender(){
+  let months = {};
+
+  data.forEach(d=>{
+    let m = d.date.slice(0,7);
+    if(!months[m]) months[m] = {i:0,e:0};
+
+    if(d.type=="income") months[m].i += d.amount;
+    else months[m].e += d.amount;
+  });
+
+  let keys = Object.keys(months);
+
+  new Chart(chart, {
+    type: "line",
+    data: {
+      labels: keys,
+      datasets: [
+        { label:"Income", data: keys.map(k=>months[k].i), borderColor:"green" },
+        { label:"Expense", data: keys.map(k=>months[k].e), borderColor:"red" }
+      ]
+    }
+  });
+}
+
+function pdf(){
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF();
+
+  let y = 10;
+  doc.text("Finance Report",10,y);
+
+  data.forEach(d=>{
+    y += 10;
+    doc.text(`${d.desc} | ${d.type} | ${d.amount}`,10,y);
+  });
+
+  doc.save("report.pdf");
 }
 
 render();
